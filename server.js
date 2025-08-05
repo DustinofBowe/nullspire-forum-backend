@@ -2,15 +2,16 @@ const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
-const { initDb, User, Category, Post, Reply, banUser } = require('./models');
+const { initDb } = require('./models');
 const { authMiddleware, adminMiddleware } = require('./middleware');
-const createRoutes = require('./routes'); // updated here
+const createRoutes = require('./routes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Update to allow frontend to access backend
-const FRONTEND_URL = "https://nullspire-forum-frontend.vercel.app";
+// Replace with your actual frontend URL
+const FRONTEND_URL = 'https://nullspire-forum-frontend.vercel.app';
+
 app.use(cors({
   origin: FRONTEND_URL,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -18,11 +19,8 @@ app.use(cors({
 }));
 
 app.use(express.json());
-
-// Static folder for uploaded images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Setup multer for image uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'uploads/'),
   filename: (req, file, cb) => {
@@ -30,6 +28,7 @@ const storage = multer.diskStorage({
     cb(null, uniqueSuffix + path.extname(file.originalname));
   }
 });
+
 const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 },
@@ -45,9 +44,8 @@ app.post('/upload-image', authMiddleware, upload.single('image'), (req, res) => 
   res.json({ imageUrl: `/uploads/${req.file.filename}` });
 });
 
-// Initialize DB and start server
 initDb().then((db) => {
-  const routes = createRoutes(db); // ✅ This injects db properly
+  const routes = createRoutes(db);
   app.use('/api', routes);
 
   app.listen(PORT, () => {

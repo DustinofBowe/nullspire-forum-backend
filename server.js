@@ -2,16 +2,17 @@ const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
-const { initDb } = require('./models');
-const { authMiddleware } = require('./middleware');
-const createRouter = require('./routes'); // <-- use function, not static object
+const { initDb, User, Category, Post, Reply, banUser } = require('./models');
+const { authMiddleware, adminMiddleware } = require('./middleware');
+const createRoutes = require('./routes'); // updated here
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Enable CORS for your frontend
+// Update to allow frontend to access backend
+const FRONTEND_URL = "https://nullspire-forum-frontend.vercel.app";
 app.use(cors({
-  origin: 'nullspire-forum-frontend-dustinofbowes-projects.vercel.app',
+  origin: FRONTEND_URL,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Admin-Password']
 }));
@@ -44,15 +45,14 @@ app.post('/upload-image', authMiddleware, upload.single('image'), (req, res) => 
   res.json({ imageUrl: `/uploads/${req.file.filename}` });
 });
 
-// Attach router
-app.use('/api', createRouter());
+// Initialize DB and start server
+initDb().then((db) => {
+  const routes = createRoutes(db); // ✅ This injects db properly
+  app.use('/api', routes);
 
-initDb()
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`NullSpire Forum backend running on port ${PORT}`);
-    });
-  })
-  .catch(err => {
-    console.error('Failed to initialize DB:', err);
+  app.listen(PORT, () => {
+    console.log(`NullSpire Forum backend running on port ${PORT}`);
   });
+}).catch(err => {
+  console.error('Failed to initialize DB:', err);
+});

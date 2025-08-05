@@ -11,7 +11,6 @@ function initDb() {
     db = new sqlite3.Database('./database.sqlite', (err) => {
       if (err) return reject(err);
 
-      // Create tables if they don't exist
       db.serialize(() => {
         db.run(`CREATE TABLE IF NOT EXISTS users (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -65,7 +64,6 @@ async function createUser(email, password, isAdmin = false) {
       [email, hashedPassword, isAdmin ? 1 : 0],
       function (err) {
         if (err) return reject(err);
-        // Return the new user object
         resolve({ id: this.lastID, email, isAdmin });
       }
     );
@@ -84,4 +82,17 @@ function findUserByEmail(email) {
 
 // Verify password hash
 function verifyPassword(plain, hash) {
-  return bcry
+  return bcrypt.compare(plain, hash);
+}
+
+// Generate JWT token for user
+function generateToken(user) {
+  return jwt.sign(
+    { id: user.id, email: user.email, isAdmin: user.isAdmin },
+    JWT_SECRET,
+    { expiresIn: '7d' }
+  );
+}
+
+// Ban user by id
+fu

@@ -4,21 +4,25 @@ const multer = require('multer');
 const path = require('path');
 const { initDb, User, Category, Post, Reply, banUser } = require('./models');
 const { authMiddleware, adminMiddleware } = require('./middleware');
-const routes = require('./routes');
+const createRoutes = require('./routes'); // <-- important: import as function
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Allow frontend access
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://nullspire-forum-frontend.vercel.app';
 app.use(cors({
-  origin: 'https://nullspire-forum-frontend-d78vb0ftg-dustinofbowes-projects.vercel.app',
+  origin: FRONTEND_URL,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Admin-Password']
 }));
 
-// Static folder for uploaded images
+app.use(express.json());
+
+// Serve uploaded images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Setup multer for image uploads
+// Set up multer for image uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'uploads/'),
   filename: (req, file, cb) => {
@@ -28,28 +32,9 @@ const storage = multer.diskStorage({
 });
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowed = /jpeg|jpg|png|gif/;
     const ext = path.extname(file.originalname).toLowerCase();
     if (allowed.test(ext)) cb(null, true);
-    else cb(new Error('Only images allowed (jpeg, jpg, png, gif).'));
-  }
-});
-
-app.post('/upload-image', authMiddleware, upload.single('image'), (req, res) => {
-  res.json({ imageUrl: `/uploads/${req.file.filename}` });
-});
-
-// Use routes for auth, posts, replies, categories, admin
-app.use('/api', routes);
-
-initDb()
-  .then(() => {
-    app.listen(PORT, () => {
-      console.log(`NullSpire Forum backend running on port ${PORT}`);
-    });
-  })
-  .catch(err => {
-    console.error('Failed to initialize DB:', err);
-  });
+    else cb(new Error('Only image files a

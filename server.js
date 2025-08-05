@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 5000;
 
 // Enable CORS for your frontend
 app.use(cors({
-  origin: 'https://nullspire-forum-frontend-your-vercel-url.vercel.app',
+  origin: 'nullspire-forum-frontend-dustinofbowes-projects.vercel.app',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Admin-Password']
 }));

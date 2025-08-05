@@ -13,7 +13,6 @@ module.exports = function(db) {
 
   const { authMiddleware, adminMiddleware } = require('./middleware');
 
-  // Signup route
   router.post('/signup', async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password)
@@ -29,11 +28,11 @@ module.exports = function(db) {
       const token = generateToken(user);
       res.json({ token, isAdmin: user.isAdmin });
     } catch (err) {
+      console.error(err);
       res.status(500).json({ error: 'Signup failed' });
     }
   });
 
-  // Login route
   router.post('/login', async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password)
@@ -50,20 +49,22 @@ module.exports = function(db) {
       const token = generateToken(user);
       res.json({ token, isAdmin: user.isAdmin });
     } catch (err) {
+      console.error(err);
       res.status(500).json({ error: 'Login failed' });
     }
   });
 
-  // Get categories
-  router.get('/categories', async (req, res) => {
+  router.get('/categories', (req, res) => {
     db.all('SELECT * FROM categories ORDER BY id', [], (err, rows) => {
-      if (err) return res.status(500).json({ error: 'Failed to get categories' });
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Failed to get categories' });
+      }
       res.json(rows);
     });
   });
 
-  // Get posts by category
-  router.get('/categories/:categoryId/posts', async (req, res) => {
+  router.get('/categories/:categoryId/posts', (req, res) => {
     const categoryId = req.params.categoryId;
     db.all(
       `SELECT posts.*, users.email as authorEmail FROM posts 
@@ -72,14 +73,16 @@ module.exports = function(db) {
        ORDER BY createdAt DESC`,
       [categoryId],
       (err, rows) => {
-        if (err) return res.status(500).json({ error: 'Failed to get posts' });
+        if (err) {
+          console.error(err);
+          return res.status(500).json({ error: 'Failed to get posts' });
+        }
         res.json(rows);
       }
     );
   });
 
-  // Get a post by ID with replies
-  router.get('/posts/:postId', async (req, res) => {
+  router.get('/posts/:postId', (req, res) => {
     const postId = req.params.postId;
 
     db.get(
@@ -88,7 +91,10 @@ module.exports = function(db) {
        WHERE posts.id = ?`,
       [postId],
       (err, post) => {
-        if (err) return res.status(500).json({ error: 'Failed to get post' });
+        if (err) {
+          console.error(err);
+          return res.status(500).json({ error: 'Failed to get post' });
+        }
         if (!post) return res.status(404).json({ error: 'Post not found' });
 
         db.all(
@@ -98,7 +104,10 @@ module.exports = function(db) {
            ORDER BY createdAt ASC`,
           [postId],
           (err, replies) => {
-            if (err) return res.status(500).json({ error: 'Failed to get replies' });
+            if (err) {
+              console.error(err);
+              return res.status(500).json({ error: 'Failed to get replies' });
+            }
             res.json({ post, replies });
           }
         );
@@ -106,7 +115,6 @@ module.exports = function(db) {
     );
   });
 
-  // Create a new post
   router.post('/posts', authMiddleware, (req, res) => {
     const { categoryId, title, content, imageUrl } = req.body;
     const userId = req.user.id;
@@ -119,13 +127,15 @@ module.exports = function(db) {
       `INSERT INTO posts (userId, categoryId, title, content, imageUrl) VALUES (?, ?, ?, ?, ?)`,
       [userId, categoryId, title, content, imageUrl || null],
       function (err) {
-        if (err) return res.status(500).json({ error: 'Failed to create post' });
+        if (err) {
+          console.error(err);
+          return res.status(500).json({ error: 'Failed to create post' });
+        }
         res.json({ postId: this.lastID });
       }
     );
   });
 
-  // Create a reply to a post
   router.post('/posts/:postId/replies', authMiddleware, (req, res) => {
     const postId = req.params.postId;
     const { content, imageUrl } = req.body;
@@ -139,37 +149,44 @@ module.exports = function(db) {
       `INSERT INTO replies (postId, userId, content, imageUrl) VALUES (?, ?, ?, ?)`,
       [postId, userId, content, imageUrl || null],
       function (err) {
-        if (err) return res.status(500).json({ error: 'Failed to create reply' });
+        if (err) {
+          console.error(err);
+          return res.status(500).json({ error: 'Failed to create reply' });
+        }
         res.json({ replyId: this.lastID });
       }
     );
   });
 
-  // Admin: Delete a post
   router.delete('/admin/posts/:postId', authMiddleware, adminMiddleware, (req, res) => {
     const postId = req.params.postId;
     db.run(`DELETE FROM posts WHERE id = ?`, [postId], function (err) {
-      if (err) return res.status(500).json({ error: 'Failed to delete post' });
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Failed to delete post' });
+      }
       res.json({ success: true });
     });
   });
 
-  // Admin: Delete a reply
   router.delete('/admin/replies/:replyId', authMiddleware, adminMiddleware, (req, res) => {
     const replyId = req.params.replyId;
     db.run(`DELETE FROM replies WHERE id = ?`, [replyId], function (err) {
-      if (err) return res.status(500).json({ error: 'Failed to delete reply' });
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ error: 'Failed to delete reply' });
+      }
       res.json({ success: true });
     });
   });
 
-  // Admin: Ban a user
   router.post('/admin/users/:userId/ban', authMiddleware, adminMiddleware, async (req, res) => {
     const userId = req.params.userId;
     try {
       await banUser(userId);
       res.json({ success: true });
-    } catch {
+    } catch (err) {
+      console.error(err);
       res.status(500).json({ error: 'Failed to ban user' });
     }
   });

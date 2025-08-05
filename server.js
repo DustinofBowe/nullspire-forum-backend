@@ -2,27 +2,26 @@ const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
-const { initDb, User, Category, Post, Reply, banUser } = require('./models');
-const { authMiddleware, adminMiddleware } = require('./middleware');
-const createRoutes = require('./routes'); // <-- important: import as function
+const { initDb } = require('./models');
+const { authMiddleware } = require('./middleware');
+const createRouter = require('./routes'); // <-- use function, not static object
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Allow frontend access
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://nullspire-forum-frontend.vercel.app';
+// Enable CORS for your frontend
 app.use(cors({
-  origin: FRONTEND_URL,
+  origin: 'https://nullspire-forum-frontend-your-vercel-url.vercel.app',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Admin-Password']
 }));
 
 app.use(express.json());
 
-// Serve uploaded images
+// Static folder for uploaded images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Set up multer for image uploads
+// Setup multer for image uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'uploads/'),
   filename: (req, file, cb) => {
@@ -37,4 +36,23 @@ const upload = multer({
     const allowed = /jpeg|jpg|png|gif/;
     const ext = path.extname(file.originalname).toLowerCase();
     if (allowed.test(ext)) cb(null, true);
-    else cb(new Error('Only image files a
+    else cb(new Error('Only images allowed (jpeg, jpg, png, gif).'));
+  }
+});
+
+app.post('/upload-image', authMiddleware, upload.single('image'), (req, res) => {
+  res.json({ imageUrl: `/uploads/${req.file.filename}` });
+});
+
+// Attach router
+app.use('/api', createRouter());
+
+initDb()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`NullSpire Forum backend running on port ${PORT}`);
+    });
+  })
+  .catch(err => {
+    console.error('Failed to initialize DB:', err);
+  });
